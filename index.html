@@ -437,24 +437,29 @@
            ADDED: Resize & crop controls
            =================================================== */
 
-        /* The four controls sit in a 2x2 square in the center of the image.
-           The square turns against the image's tilt so the icons stay upright. */
-        .collage-item .item-controls {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%) rotate(calc(-1 * var(--rot, 0deg)));
+        /* The control block floats above all images, centered on the selected one,
+           so it can always be reached even when other images overlap it */
+        .item-controls {
+            position: fixed;
+            top: 0;
+            left: 0;
+            transform: translate(-50%, -50%);
             display: grid;
-            grid-template-columns: 30px 30px;
+            grid-template-columns: 30px 30px 30px;
             grid-template-rows: 30px 30px;
             gap: 6px;
             opacity: 0;
             pointer-events: none;
             transition: opacity 0.2s ease;
-            z-index: 11;
+            z-index: 96;
         }
 
-        .collage-item .item-control {
+        .item-controls.visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .item-control {
             width: 30px;
             height: 30px;
             border-radius: 50%;
@@ -470,51 +475,39 @@
             font-weight: bold;
             line-height: 1;
             transition: transform 0.15s ease;
+            user-select: none;
         }
 
-        .collage-item .item-control:active {
+        .item-control:active {
             transform: scale(0.9);
         }
 
-        .collage-item .item-control svg {
+        .item-control svg {
             width: 16px;
             height: 16px;
             display: block;
             pointer-events: none;
         }
 
-        .collage-item .resize-control { cursor: nwse-resize; }
-        .collage-item .rotate-control { cursor: grab; }
+        .resize-control { cursor: nwse-resize; }
+        .rotate-control { cursor: grab; }
 
-        /* Smaller square on small images */
-        .collage-item.compact .item-controls {
-            grid-template-columns: 24px 24px;
+        /* Smaller block on small images */
+        .item-controls.compact {
+            grid-template-columns: 24px 24px 24px;
             grid-template-rows: 24px 24px;
             gap: 4px;
         }
 
-        .collage-item.compact .item-control {
+        .item-controls.compact .item-control {
             width: 24px;
             height: 24px;
             font-size: 13px;
         }
 
-        .collage-item.compact .item-control svg {
+        .item-controls.compact .item-control svg {
             width: 13px;
             height: 13px;
-        }
-
-        /* Controls appear on the last touched/clicked image, and on hover with a mouse */
-        .collage-item.selected .item-controls {
-            opacity: 1;
-            pointer-events: auto;
-        }
-
-        @media (hover: hover) {
-            .collage-item:hover .item-controls {
-                opacity: 1;
-                pointer-events: auto;
-            }
         }
 
         /* The ✶ button takes over from the center star while the controls are showing */
@@ -522,20 +515,10 @@
             display: none;
         }
 
-        @media (hover: hover) {
-            .collage-item.highlighted:hover::after {
-                display: none;
-            }
-        }
-
         /* Crop is only offered once the image has loaded */
-        .collage-item:not(.img-ready) .crop-control {
+        .item-controls.not-ready .crop-control {
             opacity: 0.4;
             pointer-events: none;
-        }
-
-        .collage-item.crop-mode .item-controls {
-            display: none;
         }
 
         /* Follow the pointer exactly while resizing or rotating */
@@ -557,7 +540,7 @@
         .collage-item.crop-mode:hover,
         .collage-item.crop-mode:active {
             transform: none !important;
-            z-index: 30;
+            z-index: 95 !important; /* above every layer while cropping */
             cursor: default;
         }
 
@@ -670,6 +653,134 @@
                 font-size: 11px;
             }
         }
+
+        /* ===================================================
+           ADDED: Background color
+           =================================================== */
+
+        /* Round button in the bottom-right corner, sized like the ✶ button */
+        .bg-button {
+            left: auto;
+            right: calc(15px + var(--safe-area-right, 0px));
+            padding: 0 !important;
+        }
+
+        .bg-button svg {
+            width: 20px;
+            height: 20px;
+            display: block;
+        }
+
+        .bg-panel {
+            position: fixed;
+            right: calc(15px + var(--safe-area-right, 0px));
+            bottom: calc(72px + var(--safe-area-bottom, 0px));
+            z-index: 130;
+            background: #e8e2d9;
+            border-radius: 20px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+            padding: 14px 16px 10px;
+            display: flex;
+            gap: 12px;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(8px);
+            transition: opacity 0.25s ease, visibility 0.25s ease, transform 0.25s ease;
+        }
+
+        .bg-panel.open {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+
+        .bg-option {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            background: none;
+            border: none;
+            padding: 0;
+            font-family: inherit;
+            font-size: 11px;
+            font-weight: 500;
+            color: #4A3333;
+            cursor: pointer;
+            position: relative;
+            touch-action: manipulation;
+        }
+
+        .bg-swatch {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+            border: 2px solid white;
+            transition: transform 0.15s ease;
+        }
+
+        .bg-option:active .bg-swatch {
+            transform: scale(0.9);
+        }
+
+        .bg-option.active .bg-swatch {
+            box-shadow: 0 0 0 2px #4A3333, 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .bg-swatch.light  { background: linear-gradient(135deg, #e8e2d9 0%, #f5f0eb 100%); }
+        .bg-swatch.dark   { background: linear-gradient(135deg, #241c1c 0%, #3a2e2e 100%); }
+        .bg-swatch.red    { background: linear-gradient(135deg, #9e2a22 0%, #c23a2f 100%); }
+        .bg-swatch.blue   { background: linear-gradient(135deg, #0000d6 0%, #1f1fff 100%); }
+        .bg-swatch.custom { background: conic-gradient(#ff4d4d, #ffd84d, #4dff88, #4dd2ff, #6b4dff, #ff4dd8, #ff4d4d); }
+
+        /* The real color picker sits invisibly over the "custom" swatch */
+        .bg-option input[type="color"] {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 32px;
+            height: 32px;
+            opacity: 0;
+            border: none;
+            padding: 0;
+            cursor: pointer;
+        }
+
+        /* Background choices (applied to the page behind the collage) */
+        body.bg-dark { background: linear-gradient(135deg, #241c1c 0%, #3a2e2e 100%); }
+        body.bg-red  { background: linear-gradient(135deg, #9e2a22 0%, #c23a2f 100%); }
+        body.bg-blue { background: linear-gradient(135deg, #0000d6 0%, #1f1fff 100%); }
+
+        /* Keep the title and quotes readable on darker backgrounds */
+        body.bg-on-dark .main-title,
+        body.bg-on-dark .loading-quotes {
+            color: #f5f0eb;
+        }
+
+        /* Outline the brown buttons so they stand out on darker backgrounds */
+        body.bg-on-dark .corner-button:not(#exploreBtn),
+        body.bg-on-dark .crop-toolbar button:not(.crop-apply) {
+            box-shadow: 0 0 0 1.5px rgba(245, 240, 235, 0.7), 0 4px 20px rgba(0, 0, 0, 0.15);
+        }
+
+        /* Keep the blue "explore archives" button visible on the blue background */
+        body.bg-blue #exploreBtn {
+            box-shadow: 0 0 0 2px #f5f0eb, 0 4px 20px rgba(0, 0, 0, 0.15);
+        }
+
+        @media (max-width: 480px) {
+            .bg-button {
+                right: calc(10px + var(--safe-area-right, 0px));
+            }
+            .bg-panel {
+                right: calc(10px + var(--safe-area-right, 0px));
+                bottom: calc(60px + var(--safe-area-bottom, 0px));
+                gap: 10px;
+                padding: 12px 12px 8px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -690,6 +801,18 @@
     <button class="corner-button explore-archives" id="exploreBtn" onclick="generateNewCollage()">explore archives</button>
     <button class="corner-button archive-info" onclick="showArchiveInfo()">archive info</button>
     <button class="corner-button help-button" onclick="showProjectInfo()" style="font-size: 24px;">✶</button>
+
+    <!-- ADDED: Background color button and options -->
+    <button class="corner-button help-button bg-button" id="bgButton" onclick="toggleBgPanel()" aria-label="Background color" title="Background color">
+        <svg viewBox="0 0 20 20"><circle cx="10" cy="10" r="7.5" fill="none" stroke="white" stroke-width="1.8"/><path d="M10 2.5a7.5 7.5 0 0 1 0 15z" fill="white"/></svg>
+    </button>
+    <div class="bg-panel" id="bgPanel" role="dialog" aria-label="Background color">
+        <button type="button" class="bg-option" data-bg="light" onclick="setBackground('light')"><span class="bg-swatch light"></span>light</button>
+        <button type="button" class="bg-option" data-bg="dark" onclick="setBackground('dark')"><span class="bg-swatch dark"></span>dark</button>
+        <button type="button" class="bg-option" data-bg="red" onclick="setBackground('red')"><span class="bg-swatch red"></span>red</button>
+        <button type="button" class="bg-option" data-bg="blue" onclick="setBackground('blue')"><span class="bg-swatch blue"></span>blue</button>
+        <label class="bg-option" data-bg="custom"><span class="bg-swatch custom" id="customSwatch"></span>custom<input type="color" id="customColor" value="#4a3333" aria-label="Custom background color"></label>
+    </div>
 
     <!-- Collage Container -->
     <div class="collage-container" id="collageContainer"></div>
@@ -1275,7 +1398,7 @@
                     <div class="artwork-details">${item.artist}, ${item.year}</div>
                     <div class="artwork-source">${item.source}</div>
                 </div>
-                <p>The highlighted image corresponds to this artwork. You can drag images around to rearrange them, and use the buttons in the center of an image to crop, rotate, or resize it.</p>
+                <p>The highlighted image corresponds to this artwork. You can drag images around to rearrange them, and use the buttons in the center of an image to crop, rotate, resize, or move it in front of or behind other images. The button in the bottom-right corner changes the background color.</p>
                 <p>Tap "explore archives" to fetch new artworks from museum collections.</p>
             `;
             openSidebar();
@@ -1422,7 +1545,11 @@
 
         const ICON_ROTATE = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9M13.5 1.8v3.6H9.9"/></svg>';
 
-        // Add the crop / rotate / info / resize square to a collage item
+        const itemInfo = new WeakMap(); // element -> {img, item, index}
+        let activeItem = null;          // the image the control block is showing for
+        let itemControls = null;        // the shared floating control block
+
+        // Prepare a collage item: tilt, layer order, and selection
         function enhanceCollageItem(element, img, item, index) {
             const markReady = () => {
                 if (img.naturalWidth) element.classList.add('img-ready');
@@ -1430,38 +1557,83 @@
             if (img.complete) markReady();
             img.addEventListener('load', markReady);
 
+            itemInfo.set(element, { img, item, index });
+
             // Move the random starting tilt into --rot so hover, drag and rotate all share it
             const match = /rotate\((-?[\d.]+)deg\)/.exec(element.style.transform);
             setRotation(element, match ? parseFloat(match[1]) : 0);
             element.style.transform = 'rotate(var(--rot))';
 
-            const cropBtn = makeControl('crop-control', ICON_CROP, 'Crop image');
-            const rotateBtn = makeControl('rotate-control', ICON_ROTATE, 'Rotate image (tap for 90°, drag sideways to tilt)');
-            const infoBtn = makeControl('info-control', '✶', 'Artwork details');
-            const resizeBtn = makeControl('resize-control', ICON_RESIZE, 'Resize image');
+            // Layer order: later images start on top, as before
+            element.style.zIndex = index + 1;
 
-            const controls = document.createElement('div');
-            controls.className = 'item-controls';
-            controls.append(cropBtn, rotateBtn, infoBtn, resizeBtn); // 2x2: top row, then bottom row
-            element.appendChild(controls);
-
-            cropBtn.addEventListener('click', () => enterCrop(element, img));
-            cropBtn.addEventListener('touchend', () => enterCrop(element, img));
-
-            rotateBtn.addEventListener('mousedown', e => startRotate(e, element));
-            rotateBtn.addEventListener('touchstart', e => startRotate(e, element), {passive: false});
-
-            infoBtn.addEventListener('click', () => showItemDetails(item, index));
-            infoBtn.addEventListener('touchend', () => showItemDetails(item, index));
-
-            resizeBtn.addEventListener('mousedown', e => startResize(e, element));
-            resizeBtn.addEventListener('touchstart', e => startResize(e, element), {passive: false});
-
-            updateCompact(element);
-
-            // The last image touched or clicked keeps its controls visible
+            // The last image touched or clicked gets the controls
             element.addEventListener('mousedown', () => selectItem(element));
             element.addEventListener('touchstart', () => selectItem(element), {passive: true});
+
+            // With a mouse, pointing at an image is enough
+            element.addEventListener('mouseenter', () => {
+                const busy = dragElement || isDragging || cropState ||
+                    document.querySelector('.collage-item.resizing, .collage-item.rotating');
+                if (!busy && window.matchMedia('(hover: hover)').matches) selectItem(element);
+            });
+        }
+
+        // Build the one floating control block, shared by all images
+        // 3x2: crop, forward, rotate / info, backward, resize
+        function buildItemControls() {
+            const cropBtn = makeControl('crop-control', ICON_CROP, 'Crop image');
+            const forwardBtn = makeControl('forward-control', ICON_FORWARD, 'Bring forward');
+            const rotateBtn = makeControl('rotate-control', ICON_ROTATE, 'Rotate image (tap for 90°, drag sideways to tilt)');
+            const infoBtn = makeControl('info-control', '✶', 'Artwork details');
+            const backwardBtn = makeControl('backward-control', ICON_BACKWARD, 'Send backward');
+            const resizeBtn = makeControl('resize-control', ICON_RESIZE, 'Resize image');
+
+            itemControls = document.createElement('div');
+            itemControls.className = 'item-controls';
+            itemControls.append(cropBtn, forwardBtn, rotateBtn, infoBtn, backwardBtn, resizeBtn);
+            document.body.appendChild(itemControls);
+
+            // Taps (click for mouse, touchend for touch)
+            const onTap = (btn, action) => {
+                btn.addEventListener('click', () => { if (activeItem) action(activeItem); });
+                btn.addEventListener('touchend', () => { if (activeItem) action(activeItem); });
+            };
+            onTap(cropBtn, el => enterCrop(el, itemInfo.get(el).img));
+            onTap(forwardBtn, el => moveLayer(el, 1));
+            onTap(backwardBtn, el => moveLayer(el, -1));
+            onTap(infoBtn, el => {
+                const info = itemInfo.get(el);
+                showItemDetails(info.item, info.index);
+            });
+
+            // Presses that drag
+            const onPress = (btn, action) => {
+                btn.addEventListener('mousedown', e => { if (activeItem) action(e, activeItem); });
+                btn.addEventListener('touchstart', e => { if (activeItem) action(e, activeItem); }, {passive: false});
+            };
+            onPress(rotateBtn, startRotate);
+            onPress(resizeBtn, startResize);
+
+            requestAnimationFrame(syncItemControls);
+        }
+
+        // Keep the control block centered on the active image as it moves or changes
+        function syncItemControls() {
+            const el = activeItem;
+            const show = el && el.isConnected && !cropState;
+            if (show) {
+                const rect = el.getBoundingClientRect();
+                itemControls.style.left = (rect.left + rect.width / 2) + 'px';
+                itemControls.style.top = (rect.top + rect.height / 2) + 'px';
+                const size = Math.min(el.offsetWidth, el.offsetHeight);
+                itemControls.classList.toggle('compact', size < 130);
+                itemControls.classList.toggle('not-ready', !el.classList.contains('img-ready'));
+            } else if (el && !el.isConnected) {
+                activeItem = null; // its collage was replaced
+            }
+            itemControls.classList.toggle('visible', !!show);
+            requestAnimationFrame(syncItemControls);
         }
 
         function makeControl(className, icon, label) {
@@ -1475,11 +1647,28 @@
             return control;
         }
 
-        // Use the smaller control square on small images
-        function updateCompact(element) {
-            const w = parseFloat(element.style.width) || element.offsetWidth;
-            const h = parseFloat(element.style.height) || element.offsetHeight;
-            element.classList.toggle('compact', Math.min(w, h) < 110);
+        // Sizing is handled continuously by syncItemControls
+        function updateCompact() {}
+
+        // ---------- Layering ----------
+
+        const ICON_FORWARD = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 11.5V2.5M4.5 6L8 2.5 11.5 6M3 14h10"/></svg>';
+        const ICON_BACKWARD = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4.5v9M4.5 10L8 13.5 11.5 10M3 2h10"/></svg>';
+
+        // Swap places with the next image above (step = 1) or below (step = -1)
+        function moveLayer(element, step) {
+            const items = Array.from(document.querySelectorAll('#collageContainer .collage-item'))
+                .sort((a, b) => (parseInt(a.style.zIndex) || 0) - (parseInt(b.style.zIndex) || 0));
+            // Renumber 1..n so the order is always clean
+            items.forEach((el, i) => { el.style.zIndex = i + 1; });
+
+            const from = items.indexOf(element);
+            const to = from + step;
+            if (from === -1 || to < 0 || to >= items.length) return;
+
+            const other = items[to];
+            other.style.zIndex = from + 1;
+            element.style.zIndex = to + 1;
         }
 
         // ---------- Rotate ----------
@@ -1560,6 +1749,7 @@
                 if (el !== element) el.classList.remove('selected');
             });
             element.classList.add('selected');
+            activeItem = element;
         }
 
         // Tapping the empty background hides the controls
@@ -1568,6 +1758,7 @@
                 document.querySelectorAll('.collage-item.selected').forEach(el => {
                     el.classList.remove('selected');
                 });
+                activeItem = null;
             }
         }
         document.addEventListener('mousedown', deselectOnBackground);
@@ -1805,6 +1996,89 @@
         // A new collage (or a window resize, which makes one) ends any crop in progress
         document.getElementById('exploreBtn').addEventListener('click', cancelCrop, true);
         window.addEventListener('resize', cancelCrop);
+
+        buildItemControls();
+
+        // ===================================================
+        // ADDED: Background color
+        // ===================================================
+
+        const BG_STORAGE_KEY = 'asterismBackground';
+        const BG_PRESETS = ['light', 'dark', 'red', 'blue'];
+        const BG_ON_DARK = ['dark', 'red', 'blue'];
+
+        function toggleBgPanel() {
+            document.getElementById('bgPanel').classList.toggle('open');
+        }
+
+        function closeBgPanel() {
+            document.getElementById('bgPanel').classList.remove('open');
+        }
+
+        // True when a hex color is dark enough to need light text on top of it
+        function isDarkColor(hex) {
+            const n = parseInt(hex.replace('#', ''), 16);
+            const r = (n >> 16) & 255;
+            const g = (n >> 8) & 255;
+            const b = n & 255;
+            return (0.299 * r + 0.587 * g + 0.114 * b) / 255 < 0.55;
+        }
+
+        function setBackground(name, color, save = true) {
+            const body = document.body;
+            BG_PRESETS.forEach(p => body.classList.remove('bg-' + p));
+            body.style.background = '';
+
+            if (name === 'custom' && color) {
+                body.style.background = color;
+                body.classList.toggle('bg-on-dark', isDarkColor(color));
+            } else {
+                if (!BG_PRESETS.includes(name)) name = 'light';
+                if (name !== 'light') body.classList.add('bg-' + name);
+                body.classList.toggle('bg-on-dark', BG_ON_DARK.includes(name));
+            }
+
+            document.querySelectorAll('.bg-option').forEach(opt => {
+                opt.classList.toggle('active', opt.dataset.bg === name);
+            });
+
+            if (save) {
+                try {
+                    localStorage.setItem(BG_STORAGE_KEY, JSON.stringify({ name, color: color || null }));
+                } catch (e) { /* storage unavailable: the choice just won't be remembered */ }
+            }
+        }
+
+        // Custom color: updates live while picking
+        const customColorInput = document.getElementById('customColor');
+        customColorInput.addEventListener('input', () => setBackground('custom', customColorInput.value));
+        customColorInput.addEventListener('click', () => setBackground('custom', customColorInput.value));
+
+        // Close the options when tapping anywhere else, or pressing Esc
+        function closeBgPanelOnOutside(e) {
+            const panel = document.getElementById('bgPanel');
+            const button = document.getElementById('bgButton');
+            if (!panel.contains(e.target) && !button.contains(e.target)) closeBgPanel();
+        }
+        document.addEventListener('mousedown', closeBgPanelOnOutside);
+        document.addEventListener('touchstart', closeBgPanelOnOutside, {passive: true});
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Escape') closeBgPanel();
+        });
+
+        // Restore the last background chosen on this device
+        (function restoreBackground() {
+            let saved = null;
+            try {
+                saved = JSON.parse(localStorage.getItem(BG_STORAGE_KEY));
+            } catch (e) { /* ignore */ }
+            if (saved && saved.name) {
+                if (saved.name === 'custom' && saved.color) customColorInput.value = saved.color;
+                setBackground(saved.name, saved.color, false);
+            } else {
+                setBackground('light', null, false);
+            }
+        })();
     </script>
 </body>
 </html>
