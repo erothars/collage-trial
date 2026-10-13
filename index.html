@@ -187,7 +187,7 @@
 
         .collage-item.dragging {
             z-index: 15;
-            transform: scale(1.05) !important;
+            transform: rotate(var(--rot, 0deg)) scale(1.05) !important; /* CHANGED: keeps rotation */
         }
 
         .collage-item.highlighted {
@@ -200,7 +200,7 @@
 
         .collage-item:active,
         .collage-item:hover {
-            transform: scale(1.05) !important;
+            transform: rotate(var(--rot, 0deg)) scale(1.05) !important; /* CHANGED: keeps rotation */
             z-index: 10;
         }
 
@@ -437,9 +437,24 @@
            ADDED: Resize & crop controls
            =================================================== */
 
-        /* Small round controls on the corners of an image */
-        .collage-item .item-control {
+        /* The four controls sit in a 2x2 square in the center of the image.
+           The square turns against the image's tilt so the icons stay upright. */
+        .collage-item .item-controls {
             position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(calc(-1 * var(--rot, 0deg)));
+            display: grid;
+            grid-template-columns: 30px 30px;
+            grid-template-rows: 30px 30px;
+            gap: 6px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease;
+            z-index: 11;
+        }
+
+        .collage-item .item-control {
             width: 30px;
             height: 30px;
             border-radius: 50%;
@@ -449,11 +464,16 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.2s ease;
-            z-index: 11;
+            cursor: pointer;
             touch-action: none;
+            font-size: 16px;
+            font-weight: bold;
+            line-height: 1;
+            transition: transform 0.15s ease;
+        }
+
+        .collage-item .item-control:active {
+            transform: scale(0.9);
         }
 
         .collage-item .item-control svg {
@@ -463,39 +483,64 @@
             pointer-events: none;
         }
 
-        .collage-item .resize-control {
-            right: -12px;
-            bottom: -12px;
-            cursor: nwse-resize;
+        .collage-item .resize-control { cursor: nwse-resize; }
+        .collage-item .rotate-control { cursor: grab; }
+
+        /* Smaller square on small images */
+        .collage-item.compact .item-controls {
+            grid-template-columns: 24px 24px;
+            grid-template-rows: 24px 24px;
+            gap: 4px;
         }
 
-        .collage-item .crop-control {
-            left: -12px;
-            top: -12px;
-            cursor: pointer;
+        .collage-item.compact .item-control {
+            width: 24px;
+            height: 24px;
+            font-size: 13px;
+        }
+
+        .collage-item.compact .item-control svg {
+            width: 13px;
+            height: 13px;
         }
 
         /* Controls appear on the last touched/clicked image, and on hover with a mouse */
-        .collage-item.selected .item-control {
+        .collage-item.selected .item-controls {
             opacity: 1;
             pointer-events: auto;
         }
 
         @media (hover: hover) {
-            .collage-item:hover .item-control {
+            .collage-item:hover .item-controls {
                 opacity: 1;
                 pointer-events: auto;
             }
         }
 
-        /* Crop is only offered once the image has loaded */
-        .collage-item:not(.img-ready) .crop-control,
-        .collage-item.crop-mode .item-control {
+        /* The ✶ button takes over from the center star while the controls are showing */
+        .collage-item.selected.highlighted::after {
             display: none;
         }
 
-        /* Follow the pointer exactly while resizing */
-        .collage-item.resizing {
+        @media (hover: hover) {
+            .collage-item.highlighted:hover::after {
+                display: none;
+            }
+        }
+
+        /* Crop is only offered once the image has loaded */
+        .collage-item:not(.img-ready) .crop-control {
+            opacity: 0.4;
+            pointer-events: none;
+        }
+
+        .collage-item.crop-mode .item-controls {
+            display: none;
+        }
+
+        /* Follow the pointer exactly while resizing or rotating */
+        .collage-item.resizing,
+        .collage-item.rotating {
             transition: none !important;
             z-index: 15;
         }
@@ -1058,7 +1103,7 @@
             });
             
             // ADDED: resize & crop controls
-            enhanceCollageItem(element, img);
+            enhanceCollageItem(element, img, item, index);
 
             container.appendChild(element);
 
@@ -1076,8 +1121,8 @@
             const rect = element.getBoundingClientRect();
             startX = touch.clientX;
             startY = touch.clientY;
-            startLeft = rect.left;
-            startTop = rect.top;
+            startLeft = element.offsetLeft; // CHANGED: was rect.left (made tilted images jump)
+            startTop = element.offsetTop;   // CHANGED: was rect.top
             
             element.classList.add('dragging');
         }
@@ -1125,8 +1170,8 @@
             const rect = element.getBoundingClientRect();
             startX = e.clientX;
             startY = e.clientY;
-            startLeft = rect.left;
-            startTop = rect.top;
+            startLeft = element.offsetLeft; // CHANGED: was rect.left (made tilted images jump)
+            startTop = element.offsetTop;   // CHANGED: was rect.top
             
             element.classList.add('dragging');
             
@@ -1190,7 +1235,7 @@
                     <div class="artwork-details">${item.artist}, ${item.year}</div>
                     <div class="artwork-source">${item.source}</div>
                 </div>
-                <p>The highlighted image corresponds to this artwork. You can drag images around to rearrange them, resize them with the corner handle, and crop them with the crop button.</p>
+                <p>The highlighted image corresponds to this artwork. You can drag images around to rearrange them, and use the buttons in the center of an image to crop, rotate, or resize it.</p>
                 <p>Tap "explore archives" to fetch new artworks from museum collections.</p>
             `;
             openSidebar();
@@ -1335,24 +1380,44 @@
         const cropData = new WeakMap(); // element -> {x, y, w, h} as fractions of the full image
         let cropState = null;           // the image currently being cropped
 
-        // Add the resize handle and crop button to a collage item
-        function enhanceCollageItem(element, img) {
+        const ICON_ROTATE = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9M13.5 1.8v3.6H9.9"/></svg>';
+
+        // Add the crop / rotate / info / resize square to a collage item
+        function enhanceCollageItem(element, img, item, index) {
             const markReady = () => {
                 if (img.naturalWidth) element.classList.add('img-ready');
             };
             if (img.complete) markReady();
             img.addEventListener('load', markReady);
 
-            const resizeBtn = makeControl('resize-control', ICON_RESIZE, 'Resize image');
+            // Move the random starting tilt into --rot so hover, drag and rotate all share it
+            const match = /rotate\((-?[\d.]+)deg\)/.exec(element.style.transform);
+            setRotation(element, match ? parseFloat(match[1]) : 0);
+            element.style.transform = 'rotate(var(--rot))';
+
             const cropBtn = makeControl('crop-control', ICON_CROP, 'Crop image');
-            element.appendChild(resizeBtn);
-            element.appendChild(cropBtn);
+            const rotateBtn = makeControl('rotate-control', ICON_ROTATE, 'Rotate image (tap for 90°, drag sideways to tilt)');
+            const infoBtn = makeControl('info-control', '✶', 'Artwork details');
+            const resizeBtn = makeControl('resize-control', ICON_RESIZE, 'Resize image');
+
+            const controls = document.createElement('div');
+            controls.className = 'item-controls';
+            controls.append(cropBtn, rotateBtn, infoBtn, resizeBtn); // 2x2: top row, then bottom row
+            element.appendChild(controls);
+
+            cropBtn.addEventListener('click', () => enterCrop(element, img));
+            cropBtn.addEventListener('touchend', () => enterCrop(element, img));
+
+            rotateBtn.addEventListener('mousedown', e => startRotate(e, element));
+            rotateBtn.addEventListener('touchstart', e => startRotate(e, element), {passive: false});
+
+            infoBtn.addEventListener('click', () => showItemDetails(item, index));
+            infoBtn.addEventListener('touchend', () => showItemDetails(item, index));
 
             resizeBtn.addEventListener('mousedown', e => startResize(e, element));
             resizeBtn.addEventListener('touchstart', e => startResize(e, element), {passive: false});
 
-            cropBtn.addEventListener('click', () => enterCrop(element, img));
-            cropBtn.addEventListener('touchend', () => enterCrop(element, img));
+            updateCompact(element);
 
             // The last image touched or clicked keeps its controls visible
             element.addEventListener('mousedown', () => selectItem(element));
@@ -1368,6 +1433,46 @@
             control.innerHTML = icon;
             keepFromItem(control);
             return control;
+        }
+
+        // Use the smaller control square on small images
+        function updateCompact(element) {
+            const w = parseFloat(element.style.width) || element.offsetWidth;
+            const h = parseFloat(element.style.height) || element.offsetHeight;
+            element.classList.toggle('compact', Math.min(w, h) < 110);
+        }
+
+        // ---------- Rotate ----------
+
+        function getRotation(element) {
+            return parseFloat(element.style.getPropertyValue('--rot')) || 0;
+        }
+
+        function setRotation(element, deg) {
+            element.style.setProperty('--rot', deg + 'deg');
+        }
+
+        // Tap: turn 90° clockwise. Drag sideways: tilt freely.
+        function startRotate(e, element) {
+            e.preventDefault();
+            isDragging = true;
+            selectItem(element);
+
+            const startRot = getRotation(element);
+            let moved = false;
+
+            trackPress(e, (dx, dy) => {
+                if (!moved && Math.abs(dx) < 4 && Math.abs(dy) < 4) return;
+                if (!moved) {
+                    moved = true;
+                    element.classList.add('rotating');
+                }
+                setRotation(element, startRot + dx * 0.6);
+            }, () => {
+                element.classList.remove('rotating');
+                if (!moved) setRotation(element, startRot + 90);
+                setTimeout(() => { isDragging = false; }, 100);
+            });
         }
 
         // Stop presses on our controls from also dragging the image or opening the sidebar
@@ -1437,17 +1542,22 @@
 
             const startW = element.offsetWidth;
             const startH = element.offsetHeight;
+            const centerX = element.offsetLeft + startW / 2;
+            const centerY = element.offsetTop + startH / 2;
             const minScale = MIN_ITEM_SIZE / Math.min(startW, startH);
             const maxScale = Math.max(1, Math.min(window.innerWidth / startW, window.innerHeight / startH));
 
             element.classList.add('resizing');
 
-            // Keeps proportions: the scale follows the average of both directions
+            // Drag down/right to grow, up/left to shrink. Keeps proportions and
+            // grows from the center, since the button sits in the middle.
             trackPress(e, (dx, dy) => {
-                const scale = ((startW + dx) / startW + (startH + dy) / startH) / 2;
+                const scale = ((startW + 2 * dx) / startW + (startH + 2 * dy) / startH) / 2;
                 const k = Math.max(minScale, Math.min(scale, maxScale));
-                element.style.width = (startW * k) + 'px';
-                element.style.height = (startH * k) + 'px';
+                const w = startW * k;
+                const h = startH * k;
+                setBox(element, centerX - w / 2, centerY - h / 2, w, h);
+                updateCompact(element);
             }, () => {
                 element.classList.remove('resizing');
                 setTimeout(() => { isDragging = false; }, 100);
@@ -1622,6 +1732,7 @@
             element.classList.add('cropped');
             setBox(element, full.left + r.x * full.w, full.top + r.y * full.h, r.w * full.w, r.h * full.h);
             applyCropStyles(img, r);
+            updateCompact(element);
         }
 
         function cancelCrop() {
@@ -1641,6 +1752,7 @@
                 cropData.delete(element);
                 element.classList.remove('cropped');
             }
+            updateCompact(element);
         }
 
         // Keyboard shortcuts while cropping
