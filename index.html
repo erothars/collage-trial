@@ -1,0 +1,1658 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Asterism - Visual Archive Explorer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,200..800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --vh: 1vh;
+            --safe-area-top: env(safe-area-inset-top);
+            --safe-area-bottom: env(safe-area-inset-bottom);
+            --safe-area-left: env(safe-area-inset-left);
+            --safe-area-right: env(safe-area-inset-right);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: 'Bricolage Grotesque', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #e8e2d9 0%, #f5f0eb 100%);
+            height: calc(var(--vh, 1vh) * 100);
+            position: relative;
+            overflow: hidden;
+            touch-action: manipulation;
+        }
+
+        /* Landing Page */
+        .landing-page {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: calc(var(--vh, 1vh) * 100);
+            background: linear-gradient(135deg, #e8e2d9 0%, #f5f0eb 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            transition: opacity 1s ease, visibility 1s ease;
+        }
+
+        .landing-page.hidden {
+            opacity: 0;
+            visibility: hidden;
+        }
+
+        .landing-title {
+            font-family: 'Bricolage Grotesque', sans-serif;
+            font-size: clamp(3rem, 10vw, 8rem);
+            font-weight: 300;
+            color: #4A3333;
+            text-align: center;
+            letter-spacing: -0.02em;
+            line-height: 0.9;
+        }
+
+        /* Main Title */
+        .main-title {
+            position: fixed;
+            top: calc(15px + var(--safe-area-top, 0px));
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 90;
+            font-family: 'Bricolage Grotesque', sans-serif;
+            font-size: clamp(1.2rem, 3vw, 2rem);
+            font-weight: 200;
+            color: #4A3333;
+            opacity: 0;
+            transition: opacity 0.8s ease 1.5s;
+        }
+
+        .main-title.visible {
+            opacity: 0.75;
+        }
+
+        /* Loading Quotes */
+        .loading-quotes {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 50;
+            font-family: 'Bricolage Grotesque', sans-serif;
+            font-size: clamp(1rem, 2.5vw, 1.5rem);
+            font-weight: 200;
+            color: #4A3333;
+            opacity: 0.5;
+            text-align: center;
+            max-width: 90%;
+            line-height: 1.4;
+            transition: opacity 0.5s ease;
+            padding: 0 20px;
+        }
+
+        .loading-quotes.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        /* Corner Buttons - Mobile Optimized with Safe Areas */
+        .corner-button {
+            position: fixed;
+            z-index: 100;
+            padding: 14px 20px;
+            border-radius: 25px;
+            border: none;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: inherit;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+            background: #4A3333;
+            color: white;
+            touch-action: manipulation;
+        }
+
+        .corner-button:active {
+            transform: scale(0.95);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        .corner-button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .explore-archives {
+            top: calc(15px + var(--safe-area-top, 0px));
+            left: calc(15px + var(--safe-area-left, 0px));
+        }
+
+        .archive-info {
+            top: calc(15px + var(--safe-area-top, 0px));
+            right: calc(15px + var(--safe-area-right, 0px));
+        }
+
+        /* Override color for explore button only */
+        #exploreBtn {
+            background: #0000ff;
+        }
+
+        #exploreBtn:active {
+            background: #0000cc; /* Slightly darker on press */
+        }
+
+        .help-button {
+            bottom: calc(15px + var(--safe-area-bottom, 0px));
+            left: calc(15px + var(--safe-area-left, 0px));
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            font-weight: 600;
+            padding: 0;
+            color: white; /* Change this to any color you want */
+        }
+
+        /* Collage Container */
+        .collage-container {
+            position: relative;
+            width: 100%;
+            height: calc(var(--vh, 1vh) * 100);
+            overflow: hidden;
+        }
+
+        .collage-item {
+            position: absolute;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            opacity: 0;
+            user-select: none;
+            touch-action: manipulation;
+        }
+
+        .collage-item.dragging {
+            z-index: 15;
+            transform: scale(1.05) !important;
+        }
+
+        .collage-item.highlighted {
+            z-index: 20;
+        }
+
+        .collage-item.visible {
+            opacity: 1;
+        }
+
+        .collage-item:active,
+        .collage-item:hover {
+            transform: scale(1.05) !important;
+            z-index: 10;
+        }
+
+        .collage-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            display: block;
+            opacity: 0.9;
+            pointer-events: none;
+        }
+
+        .collage-item.highlighted::after {
+            content: '✶';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 35px;
+            height: 35px;
+            background: white;
+            color: #4A3333;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            font-weight: bold;
+            z-index: 10;
+            pointer-events: none;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        }
+
+        /* Sidebar - Mobile Optimized with Safe Areas */
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: -100%;
+            width: 90%;
+            max-width: 400px;
+            height: calc(var(--vh, 1vh) * 100);
+            background: #e8e2d9;
+            backdrop-filter: blur(20px);
+            z-index: 200;
+            transition: left 0.3s ease;
+            overflow-y: auto;
+            padding: calc(20px + var(--safe-area-top, 0px)) calc(20px + var(--safe-area-right, 0px)) calc(20px + var(--safe-area-bottom, 0px)) calc(20px + var(--safe-area-left, 0px));
+            font-family: 'Bricolage Grotesque', sans-serif;
+        }
+
+        .sidebar.open {
+            left: 0;
+        }
+
+        .sidebar-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: calc(var(--vh, 1vh) * 100);
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 150;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .sidebar-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .sidebar hr {
+            border: none;
+            height: 1px;
+            background: white;
+            margin: 15px 0;
+            opacity: 0.8;
+        }
+
+        .close-btn {
+            position: absolute;
+            top: calc(20px + var(--safe-area-top, 0px));
+            right: calc(20px + var(--safe-area-right, 0px));
+            background: #4A3333;
+            color: white;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            touch-action: manipulation;
+        }
+
+        .close-btn:active {
+            transform: scale(0.9);
+        }
+
+        .sidebar-content {
+            margin-top: 60px;
+        }
+
+        .sidebar h2 {
+            font-size: 22px;
+            color: #4A3333;
+            margin-bottom: 20px;
+        }
+
+        .sidebar h3 {
+            font-size: 18px;
+            color: #4A3333;
+            margin: 20px 0 10px 0;
+        }
+
+        .sidebar p {
+            color: #4A3333;
+            line-height: 1.6;
+            margin-bottom: 15px;
+            font-size: 14px;
+        }
+
+        .artwork-item {
+            margin-bottom: 25px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .artwork-title {
+            font-size: 15px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .artwork-details {
+            font-size: 13px;
+            color: #666;
+            margin-bottom: 8px;
+        }
+
+        .artwork-source {
+            font-size: 12px;
+            color: #000000;
+        }
+
+        .archive-links a {
+            display: block;
+            color: #000000;
+            text-decoration: none;
+            padding: 12px 0;
+            border-bottom: 1px solid #f0f0f0;
+            transition: color 0.3s ease;
+            font-size: 14px;
+        }
+
+        .archive-links a:active {
+            color: #333333;
+        }
+
+        /* Mobile Responsive */
+        @media (max-width: 768px) {
+            .corner-button {
+                padding: 12px 16px;
+                font-size: 12px;
+            }
+            
+            .help-button {
+                width: 40px;
+                height: 40px;
+                font-size: 14px;
+            }
+            
+            .sidebar {
+                width: 100%;
+                left: -100%;
+            }
+            
+            .loading-quotes {
+                font-size: 1rem;
+                padding: 0 15px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .corner-button {
+                padding: 10px 14px;
+                font-size: 11px;
+            }
+            
+            .main-title {
+                font-size: 1.5rem;
+                top: calc(10px + var(--safe-area-top, 0px));
+            }
+            
+            .explore-archives {
+                top: calc(10px + var(--safe-area-top, 0px));
+                left: calc(10px + var(--safe-area-left, 0px));
+            }
+            
+            .archive-info {
+                top: calc(10px + var(--safe-area-top, 0px));
+                right: calc(10px + var(--safe-area-right, 0px));
+            }
+            
+            .help-button {
+                bottom: calc(10px + var(--safe-area-bottom, 0px));
+                left: calc(10px + var(--safe-area-left, 0px));
+            }
+        }
+
+        /* Landscape orientation adjustments */
+        @media (orientation: landscape) and (max-height: 500px) {
+            .corner-button {
+                padding: 8px 12px;
+                font-size: 11px;
+            }
+            
+            .help-button {
+                width: 35px;
+                height: 35px;
+                font-size: 12px;
+            }
+            
+            .main-title {
+                font-size: 1.2rem;
+            }
+        }
+
+        /* ===================================================
+           ADDED: Resize & crop controls
+           =================================================== */
+
+        /* Small round controls on the corners of an image */
+        .collage-item .item-control {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: white;
+            color: #4A3333;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease;
+            z-index: 11;
+            touch-action: none;
+        }
+
+        .collage-item .item-control svg {
+            width: 16px;
+            height: 16px;
+            display: block;
+            pointer-events: none;
+        }
+
+        .collage-item .resize-control {
+            right: -12px;
+            bottom: -12px;
+            cursor: nwse-resize;
+        }
+
+        .collage-item .crop-control {
+            left: -12px;
+            top: -12px;
+            cursor: pointer;
+        }
+
+        /* Controls appear on the last touched/clicked image, and on hover with a mouse */
+        .collage-item.selected .item-control {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        @media (hover: hover) {
+            .collage-item:hover .item-control {
+                opacity: 1;
+                pointer-events: auto;
+            }
+        }
+
+        /* Crop is only offered once the image has loaded */
+        .collage-item:not(.img-ready) .crop-control,
+        .collage-item.crop-mode .item-control {
+            display: none;
+        }
+
+        /* Follow the pointer exactly while resizing */
+        .collage-item.resizing {
+            transition: none !important;
+            z-index: 15;
+        }
+
+        /* A cropped image is shifted and clipped inside its box */
+        .collage-item.cropped img {
+            position: absolute;
+            max-width: none;
+            object-fit: fill;
+        }
+
+        /* Crop mode: straighten the image and edit the crop area */
+        .collage-item.crop-mode,
+        .collage-item.crop-mode:hover,
+        .collage-item.crop-mode:active {
+            transform: none !important;
+            z-index: 30;
+            cursor: default;
+        }
+
+        .crop-layer {
+            position: absolute;
+            inset: 0;
+            overflow: hidden;
+            touch-action: none;
+            z-index: 12;
+        }
+
+        .crop-box {
+            position: absolute;
+            box-shadow: 0 0 0 9999px rgba(74, 51, 51, 0.55);
+            outline: 1px solid rgba(255, 255, 255, 0.9);
+            cursor: move;
+        }
+
+        .crop-handle {
+            position: absolute;
+            width: 32px;
+            height: 32px;
+        }
+
+        .crop-handle::before {
+            content: '';
+            position: absolute;
+            border: 0 solid white;
+            filter: drop-shadow(0 0 2px rgba(0,0,0,0.5));
+        }
+
+        .crop-handle.nw { left: 0; top: 0; cursor: nwse-resize; }
+        .crop-handle.ne { right: 0; top: 0; cursor: nesw-resize; }
+        .crop-handle.sw { left: 0; bottom: 0; cursor: nesw-resize; }
+        .crop-handle.se { right: 0; bottom: 0; cursor: nwse-resize; }
+        .crop-handle.n  { top: 0; left: 50%; transform: translateX(-50%); cursor: ns-resize; }
+        .crop-handle.s  { bottom: 0; left: 50%; transform: translateX(-50%); cursor: ns-resize; }
+        .crop-handle.e  { right: 0; top: 50%; transform: translateY(-50%); cursor: ew-resize; }
+        .crop-handle.w  { left: 0; top: 50%; transform: translateY(-50%); cursor: ew-resize; }
+
+        .crop-handle.nw::before { left: 0; top: 0; width: 16px; height: 16px; border-left-width: 3px; border-top-width: 3px; }
+        .crop-handle.ne::before { right: 0; top: 0; width: 16px; height: 16px; border-right-width: 3px; border-top-width: 3px; }
+        .crop-handle.sw::before { left: 0; bottom: 0; width: 16px; height: 16px; border-left-width: 3px; border-bottom-width: 3px; }
+        .crop-handle.se::before { right: 0; bottom: 0; width: 16px; height: 16px; border-right-width: 3px; border-bottom-width: 3px; }
+        .crop-handle.n::before  { top: 0; left: 7px; width: 18px; border-top-width: 3px; }
+        .crop-handle.s::before  { bottom: 0; left: 7px; width: 18px; border-bottom-width: 3px; }
+        .crop-handle.e::before  { right: 0; top: 7px; height: 18px; border-right-width: 3px; }
+        .crop-handle.w::before  { left: 0; top: 7px; height: 18px; border-left-width: 3px; }
+
+        /* Cancel / apply buttons, styled like the existing corner buttons */
+        .crop-toolbar {
+            position: fixed;
+            left: 50%;
+            bottom: calc(15px + var(--safe-area-bottom, 0px));
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+            z-index: 120;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+
+        .crop-toolbar.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .crop-toolbar button {
+            padding: 14px 20px;
+            border-radius: 25px;
+            border: none;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            font-family: inherit;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+            background: #4A3333;
+            color: white;
+            transition: all 0.3s ease;
+            touch-action: manipulation;
+            white-space: nowrap;
+        }
+
+        .crop-toolbar button:active {
+            transform: scale(0.95);
+        }
+
+        .crop-toolbar .crop-apply {
+            background: #0000ff;
+        }
+
+        .crop-toolbar .crop-apply:active {
+            background: #0000cc;
+        }
+
+        @media (max-width: 768px) {
+            .crop-toolbar button {
+                padding: 12px 16px;
+                font-size: 12px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .crop-toolbar {
+                bottom: calc(10px + var(--safe-area-bottom, 0px));
+            }
+            .crop-toolbar button {
+                padding: 10px 14px;
+                font-size: 11px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Landing Page -->
+    <div class="landing-page" id="landingPage">
+        <h1 class="landing-title">Asterism</h1>
+    </div>
+
+    <!-- Loading Quotes -->
+    <div class="loading-quotes" id="loadingQuotes">
+        "Art is the lie that enables us to realize the truth." — Pablo Picasso
+    </div>
+
+    <!-- Main Title -->
+    <h1 class="main-title" id="mainTitle">Asterism</h1>
+
+    <!-- Corner Buttons -->
+    <button class="corner-button explore-archives" id="exploreBtn" onclick="generateNewCollage()">explore archives</button>
+    <button class="corner-button archive-info" onclick="showArchiveInfo()">archive info</button>
+    <button class="corner-button help-button" onclick="showProjectInfo()" style="font-size: 24px;">✶</button>
+
+    <!-- Collage Container -->
+    <div class="collage-container" id="collageContainer"></div>
+
+    <!-- ADDED: Crop toolbar (shown only while cropping) -->
+    <div class="crop-toolbar" id="cropToolbar">
+        <button type="button" onclick="cancelCrop()">cancel</button>
+        <button type="button" class="crop-apply" onclick="applyCrop()">apply crop</button>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+    <div class="sidebar" id="sidebar">
+        <button class="close-btn" onclick="closeSidebar()">×</button>
+        <div class="sidebar-content" id="sidebarContent"></div>
+    </div>
+
+    <script>
+        // Famous artist quotes for loading screen
+        const artistQuotes = [
+            "The act of creation is a kind of ritual, and collage is my way of connecting fragments into something whole. — Hannah Höch",
+            "Collage is like a hall of mirrors. Every direction you look, you see something different and visually stimulating. — Nita Leland",
+            "Collage is a demonstration of the many becoming the one, with the one never fully resolved because of the many that continue to impinge upon it. — Donald Kuspit",
+            "Collage is the twentieth century's greatest innovation. — Robert Motherwell",
+            "Creativity takes courage. — Henri Matisse",
+        ];
+
+        // Track used IDs to prevent repetition
+        let usedMetIds = new Set();
+        let usedAicIds = new Set();
+        let currentCollage = [];
+        let isLoading = false;
+        let isDragging = false;
+        let dragElement = null;
+        let startX = 0;
+        let startY = 0;
+        let startLeft = 0;
+        let startTop = 0;
+
+        // Fallback images for when APIs are slow or fail
+        const fallbackImages = [
+            {
+                title: "The Great Wave off Kanagawa",
+                artist: "Katsushika Hokusai",
+                year: "c. 1831",
+                source: "Various Collections",
+                image: "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0a/The_Great_Wave_off_Kanagawa.jpg/800px-The_Great_Wave_off_Kanagawa.jpg"
+            },
+            {
+                title: "Girl with a Pearl Earring",
+                artist: "Johannes Vermeer",
+                year: "c. 1665",
+                source: "Mauritshuis",
+                image: "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0f/1665_Girl_with_a_Pearl_Earring.jpg/800px-1665_Girl_with_a_Pearl_Earring.jpg"
+            },
+            {
+                title: "American Gothic",
+                artist: "Grant Wood",
+                year: "1930",
+                source: "Art Institute of Chicago",
+                image: "https://upload.wikimedia.org/wikipedia/commons/thumb/c/cc/Grant_Wood_-_American_Gothic_-_Google_Art_Project.jpg/800px-Grant_Wood_-_American_Gothic_-_Google_Art_Project.jpg"
+            },
+            {
+                title: "The Starry Night",
+                artist: "Vincent van Gogh",
+                year: "1889",
+                source: "Museum of Modern Art",
+                image: "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ea/Van_Gogh_-_Starry_Night_-_Google_Art_Project.jpg/800px-Van_Gogh_-_Starry_Night_-_Google_Art_Project.jpg"
+            },
+            {
+                title: "The Birth of Venus",
+                artist: "Sandro Botticelli",
+                year: "c. 1484–1486",
+                source: "Uffizi Gallery",
+                image: "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0b/Sandro_Botticelli_-_La_nascita_di_Venere_-_Google_Art_Project_-_edited.jpg/800px-Sandro_Botticelli_-_La_nascita_di_Venere_-_Google_Art_Project_-_edited.jpg"
+            }
+        ];
+
+        // Fetch fresh artworks from Met Museum API
+        async function fetchMetMuseumArt() {
+            try {
+                console.log('Fetching from Met Museum...');
+                
+                // Search with random keywords to get variety
+                const searchTerms = ['painting', 'portrait', 'landscape', 'still life', 'sculpture', 'drawing', 'prints', 'photography', 'ceramics', 'textiles'];
+                const randomTerm = searchTerms[Math.floor(Math.random() * searchTerms.length)];
+                
+                const searchResponse = await fetch(`https://collectionapi.metmuseum.org/public/collection/v1/search?hasImages=true&q=${randomTerm}`);
+                
+                if (!searchResponse.ok) throw new Error('Met API search failed');
+                
+                const searchData = await searchResponse.json();
+                
+                if (searchData.objectIDs && searchData.objectIDs.length > 0) {
+                    // Filter out already used IDs
+                    let availableIds = searchData.objectIDs.filter(id => !usedMetIds.has(id));
+                    
+                    // If we've used too many, reset but keep some recent ones
+                    if (availableIds.length < 50) {
+                        console.log('Refreshing Met Museum ID pool');
+                        usedMetIds.clear();
+                        availableIds = searchData.objectIDs;
+                    }
+                    
+                    // Get random selection of available IDs - try more to ensure we get good ones
+                    const selectedIds = availableIds.sort(() => 0.5 - Math.random()).slice(0, 30);
+                    const artworks = [];
+                    
+                    for (const id of selectedIds) {
+                        if (artworks.length >= 4) break; // Aim for 4 good ones from Met
+                        
+                        try {
+                            const objectResponse = await fetch(`https://collectionapi.metmuseum.org/public/collection/v1/objects/${id}`);
+                            
+                            if (!objectResponse.ok) continue;
+                            
+                            const objectData = await objectResponse.json();
+                            
+                            // More flexible validation - just need image and title
+                            if (objectData.primaryImage && 
+                                objectData.title && 
+                                objectData.primaryImage.includes('metmuseum.org')) {
+                                
+                                artworks.push({
+                                    title: objectData.title,
+                                    artist: objectData.artistDisplayName || 'Unknown Artist',
+                                    year: objectData.objectDate || 'Unknown Date',
+                                    source: 'Metropolitan Museum of Art',
+                                    image: objectData.primaryImage
+                                });
+                                
+                                // Mark this ID as used
+                                usedMetIds.add(id);
+                            }
+                        } catch (error) {
+                            console.log('Error fetching Met object:', error);
+                        }
+                    }
+                    
+                    console.log(`Fetched ${artworks.length} fresh artworks from Met Museum`);
+                    return artworks;
+                }
+            } catch (error) {
+                console.log('Met Museum API error:', error);
+            }
+            return [];
+        }
+
+        // Fetch fresh artworks from Art Institute of Chicago
+        async function fetchChicagoArt() {
+            try {
+                console.log('Fetching from Art Institute of Chicago...');
+                
+                // Get a random page to ensure variety - expand range
+                const randomPage = Math.floor(Math.random() * 50) + 1;
+                
+                const response = await fetch(`https://api.artic.edu/api/v1/artworks?page=${randomPage}&limit=40&fields=id,title,artist_display,date_display,image_id`);
+                
+                if (!response.ok) throw new Error('AIC API failed');
+                
+                const data = await response.json();
+                
+                if (data.data && data.data.length > 0) {
+                    // Filter for items with images and not already used
+                    let availableItems = data.data.filter(item => 
+                        item.image_id && !usedAicIds.has(item.id)
+                    );
+                    
+                    // If we've used too many, reset but keep some recent ones
+                    if (availableItems.length < 10) {
+                        console.log('Refreshing AIC ID pool');
+                        usedAicIds.clear();
+                        availableItems = data.data.filter(item => item.image_id);
+                    }
+                    
+                    const selectedItems = availableItems.slice(0, 3); // Aim for 3 from AIC initially
+                    const artworks = selectedItems.map(item => {
+                        usedAicIds.add(item.id); // Mark as used
+                        return {
+                            title: item.title || 'Untitled',
+                            artist: item.artist_display || 'Unknown Artist',
+                            year: item.date_display || 'Unknown Date',
+                            source: 'Art Institute of Chicago',
+                            image: `https://www.artic.edu/iiif/2/${item.image_id}/full/843,/0/default.jpg`
+                        };
+                    });
+                    
+                    console.log(`Fetched ${artworks.length} fresh artworks from AIC`);
+                    return artworks;
+                }
+            } catch (error) {
+                console.log('AIC API error:', error);
+            }
+            return [];
+        }
+
+        // Main function to fetch fresh artworks
+        async function fetchFreshArtworks() {
+            console.log('Fetching fresh artworks from APIs...');
+            
+            let artworks = [];
+            
+            try {
+                // Fetch from both APIs with longer timeout for better results
+                const timeoutPromise = new Promise((_, reject) => 
+                    setTimeout(() => reject(new Error('API timeout')), 15000)
+                );
+                
+                const [metArt, chicagoArt] = await Promise.race([
+                    Promise.all([fetchMetMuseumArt(), fetchChicagoArt()]),
+                    timeoutPromise
+                ]);
+                
+                artworks.push(...metArt, ...chicagoArt);
+                console.log(`Got ${artworks.length} artworks from APIs`);
+                
+                // If we don't have enough, try to fetch more from APIs
+                if (artworks.length < 7) {
+                    console.log(`Need ${7 - artworks.length} more artworks, fetching additional...`);
+                    
+                    // Try to get more from Met Museum with different search term
+                    if (artworks.length < 6) {
+                        const additionalMet = await fetchMetMuseumArt();
+                        artworks.push(...additionalMet);
+                        console.log(`Added ${additionalMet.length} more from Met`);
+                    }
+                    
+                    // Try to get more from Chicago with different page
+                    if (artworks.length < 7) {
+                        const additionalChicago = await fetchChicagoArt();
+                        artworks.push(...additionalChicago);
+                        console.log(`Added ${additionalChicago.length} more from Chicago`);
+                    }
+                    
+                    // Only use fallbacks if we still don't have enough after extra attempts
+                    if (artworks.length < 7) {
+                        const needed = 7 - artworks.length;
+                        console.log(`Still need ${needed} more, using minimal fallbacks`);
+                        const shuffledFallbacks = fallbackImages.sort(() => 0.5 - Math.random()).slice(0, needed);
+                        artworks.push(...shuffledFallbacks);
+                    }
+                }
+                
+            } catch (error) {
+                console.log('API fetch error, using fallbacks:', error);
+                // Only on complete API failure, use fallbacks
+                artworks = fallbackImages.sort(() => 0.5 - Math.random()).slice(0, 7);
+            }
+            
+            // Always return exactly 7 items
+            return artworks.slice(0, 7);
+        }
+
+        // Show loading quote
+        function showLoadingQuote() {
+            const quotesElement = document.getElementById('loadingQuotes');
+            const randomQuote = artistQuotes[Math.floor(Math.random() * artistQuotes.length)];
+            quotesElement.textContent = randomQuote;
+            quotesElement.classList.remove('hidden');
+        }
+
+        // Hide loading quote
+        function hideLoadingQuote() {
+            const quotesElement = document.getElementById('loadingQuotes');
+            quotesElement.classList.add('hidden');
+        }
+
+        // Generate new collage with fresh images
+        async function generateNewCollage() {
+            if (isLoading) return;
+            
+            console.log('Generating new collage...');
+            isLoading = true;
+            
+            // Update UI for loading state
+            showLoadingQuote();
+            const exploreBtn = document.getElementById('exploreBtn');
+            const originalText = exploreBtn.textContent;
+            exploreBtn.textContent = 'exploring archives...';
+            exploreBtn.disabled = true;
+            
+            try {
+                // Clear current collage
+                const container = document.getElementById('collageContainer');
+                container.innerHTML = '';
+                
+                // Fetch fresh artworks
+                currentCollage = await fetchFreshArtworks();
+                console.log(`New collage generated with ${currentCollage.length} artworks`);
+                
+                // Hide loading quote
+                hideLoadingQuote();
+                
+                // Create collage items
+                currentCollage.forEach((item, index) => {
+                    createCollageItem(item, index, container);
+                });
+                
+            } catch (error) {
+                console.error('Error generating collage:', error);
+                hideLoadingQuote();
+                
+                // Use fallback on error
+                currentCollage = fallbackImages.slice(0, 7);
+                const container = document.getElementById('collageContainer');
+                container.innerHTML = '';
+                currentCollage.forEach((item, index) => {
+                    createCollageItem(item, index, container);
+                });
+            } finally {
+                // Reset button
+                exploreBtn.textContent = originalText;
+                exploreBtn.disabled = false;
+                isLoading = false;
+            }
+        }
+
+        // Create individual collage item - Mobile optimized
+        function createCollageItem(item, index, container) {
+            const element = document.createElement('div');
+            element.className = 'collage-item';
+            element.setAttribute('data-artwork-id', index);
+            
+            // Mobile-friendly sizes with safe area considerations
+            const isMobile = window.innerWidth <= 768;
+            const safeAreaBottom = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--safe-area-bottom')) || 0;
+            const safeAreaTop = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--safe-area-top')) || 0;
+            
+            let size;
+            if (isMobile) {
+                // Smaller sizes for mobile
+                if (index < 2) {
+                    size = Math.random() * 50 + 200; // 200-250px for first 2
+                } else {
+                    size = Math.random() * 40 + 120; // 120-160px for others
+                }
+            } else {
+                // Original sizes for desktop/tablet
+                if (index < 2) {
+                    size = Math.random() * 100 + 300; // 300-400px for first 2
+                } else {
+                    size = Math.random() * 100 + 150; // 150-250px for others
+                }
+            }
+            
+            const viewportHeight = window.innerHeight;
+            const availableHeight = viewportHeight - safeAreaTop - safeAreaBottom - 160; // Account for buttons and safe areas
+            const availableWidth = window.innerWidth - 100; // Account for side margins
+            
+            const maxX = Math.max(50, availableWidth - size);
+            const maxY = Math.max(80 + safeAreaTop, availableHeight - size);
+            const x = Math.random() * maxX + 50;
+            const y = Math.random() * maxY + (80 + safeAreaTop); // Leave space for header + safe area
+            const rotation = (Math.random() - 0.5) * 15; // Smaller rotation for mobile
+            
+            element.style.width = size + 'px';
+            element.style.height = size + 'px';
+            element.style.left = x + 'px';
+            element.style.top = y + 'px';
+            element.style.transform = `rotate(${rotation}deg)`;
+            
+            const img = document.createElement('img');
+            img.src = item.image;
+            img.alt = item.title;
+            img.draggable = false;
+            
+            // Handle image load errors
+            img.onerror = function() {
+                console.log('Image failed to load:', item.image);
+            };
+            
+            element.appendChild(img);
+            
+            // Touch and mouse event handling
+            let touchStartTime = 0;
+            let hasMoved = false;
+            
+            // Touch events
+            element.addEventListener('touchstart', function(e) {
+                e.preventDefault();
+                touchStartTime = Date.now();
+                hasMoved = false;
+                startTouch(e.touches[0], element);
+            }, {passive: false});
+            
+            element.addEventListener('touchmove', function(e) {
+                e.preventDefault();
+                hasMoved = true;
+                moveTouch(e.touches[0]);
+            }, {passive: false});
+            
+            element.addEventListener('touchend', function(e) {
+                e.preventDefault();
+                const touchDuration = Date.now() - touchStartTime;
+                if (!hasMoved && touchDuration < 300) {
+                    // Short tap without movement = click
+                    showItemDetails(item, index);
+                }
+                stopTouch();
+            }, {passive: false});
+            
+            // Mouse events for desktop
+            element.addEventListener('mousedown', function(e) {
+                startMouse(e, element);
+            });
+            
+            element.addEventListener('click', function(e) {
+                if (!isDragging) {
+                    showItemDetails(item, index);
+                }
+            });
+            
+            // ADDED: resize & crop controls
+            enhanceCollageItem(element, img);
+
+            container.appendChild(element);
+
+            // Animate in with staggered timing
+            setTimeout(() => {
+                element.classList.add('visible');
+            }, index * 100);
+        }
+
+        // Touch handling functions
+        function startTouch(touch, element) {
+            isDragging = false;
+            dragElement = element;
+            
+            const rect = element.getBoundingClientRect();
+            startX = touch.clientX;
+            startY = touch.clientY;
+            startLeft = rect.left;
+            startTop = rect.top;
+            
+            element.classList.add('dragging');
+        }
+
+        function moveTouch(touch) {
+            if (!dragElement) return;
+            
+            const deltaX = touch.clientX - startX;
+            const deltaY = touch.clientY - startY;
+            
+            if (Math.abs(deltaX) > 10 || Math.abs(deltaY) > 10) {
+                isDragging = true;
+            }
+            
+            const newLeft = startLeft + deltaX;
+            const newTop = startTop + deltaY;
+            
+            const maxLeft = window.innerWidth - dragElement.offsetWidth;
+            const maxTop = window.innerHeight - dragElement.offsetHeight;
+            
+            const boundedLeft = Math.max(0, Math.min(newLeft, maxLeft));
+            const boundedTop = Math.max(0, Math.min(newTop, maxTop));
+            
+            dragElement.style.left = boundedLeft + 'px';
+            dragElement.style.top = boundedTop + 'px';
+        }
+
+        function stopTouch() {
+            if (dragElement) {
+                dragElement.classList.remove('dragging');
+                dragElement = null;
+            }
+            
+            setTimeout(() => {
+                isDragging = false;
+            }, 100);
+        }
+
+        // Mouse handling functions (for desktop)
+        function startMouse(e, element) {
+            e.preventDefault();
+            isDragging = false;
+            dragElement = element;
+            
+            const rect = element.getBoundingClientRect();
+            startX = e.clientX;
+            startY = e.clientY;
+            startLeft = rect.left;
+            startTop = rect.top;
+            
+            element.classList.add('dragging');
+            
+            document.addEventListener('mousemove', moveMouse);
+            document.addEventListener('mouseup', stopMouse);
+        }
+
+        function moveMouse(e) {
+            if (!dragElement) return;
+            
+            const deltaX = e.clientX - startX;
+            const deltaY = e.clientY - startY;
+            
+            if (Math.abs(deltaX) > 5 || Math.abs(deltaY) > 5) {
+                isDragging = true;
+            }
+            
+            const newLeft = startLeft + deltaX;
+            const newTop = startTop + deltaY;
+            
+            const maxLeft = window.innerWidth - dragElement.offsetWidth;
+            const maxTop = window.innerHeight - dragElement.offsetHeight;
+            
+            const boundedLeft = Math.max(0, Math.min(newLeft, maxLeft));
+            const boundedTop = Math.max(0, Math.min(newTop, maxTop));
+            
+            dragElement.style.left = boundedLeft + 'px';
+            dragElement.style.top = boundedTop + 'px';
+        }
+
+        function stopMouse() {
+            if (dragElement) {
+                dragElement.classList.remove('dragging');
+                dragElement = null;
+            }
+            
+            document.removeEventListener('mousemove', moveMouse);
+            document.removeEventListener('mouseup', stopMouse);
+            
+            setTimeout(() => {
+                isDragging = false;
+            }, 100);
+        }
+
+        // Show item details with highlighting
+        function showItemDetails(item, index) {
+            document.querySelectorAll('.collage-item').forEach(el => {
+                el.classList.remove('highlighted');
+            });
+            
+            const clickedElement = document.querySelector(`[data-artwork-id="${index}"]`);
+            if (clickedElement) {
+                clickedElement.classList.add('highlighted');
+            }
+            
+            const content = document.getElementById('sidebarContent');
+            content.innerHTML = `
+                <h2>Artwork Details</h2>
+                <div class="artwork-item">
+                    <div class="artwork-title">${item.title}</div>
+                    <div class="artwork-details">${item.artist}, ${item.year}</div>
+                    <div class="artwork-source">${item.source}</div>
+                </div>
+                <p>The highlighted image corresponds to this artwork. You can drag images around to rearrange them, resize them with the corner handle, and crop them with the crop button.</p>
+                <p>Tap "explore archives" to fetch new artworks from museum collections.</p>
+            `;
+            openSidebar();
+        }
+
+        // Show archive information
+        function showArchiveInfo() {
+            const content = document.getElementById('sidebarContent');
+            let html = '<h2>Current Archive Items</h2>';
+            
+            if (currentCollage.length > 0) {
+                currentCollage.forEach(item => {
+                    html += `
+                        <div class="artwork-item">
+                            <div class="artwork-title">"${item.title}"</div>
+                            <div class="artwork-details">${item.artist}, ${item.year}</div>
+                            <div class="artwork-source">${item.source}</div>
+                        </div>
+                    `;
+                });
+            }
+            
+            html += `
+                <h3>Archive Sources</h3>
+                <div class="archive-links">
+                    <a href="https://www.metmuseum.org/art/collection" target="_blank">The Metropolitan Museum of Art Open Access</a>
+                    <a href="https://www.artic.edu/collection" target="_blank">Art Institute of Chicago Digital Collections</a>
+                    <a href="https://commons.wikimedia.org/" target="_blank">Wikimedia Commons</a>
+                </div>
+            `;
+            
+            content.innerHTML = html;
+            openSidebar();
+        }
+
+        // Show project information
+        function showProjectInfo() {
+            const content = document.getElementById('sidebarContent');
+            content.innerHTML = `
+                <h2>Visual Archive Explorer</h2>
+                <p>Asterism functions as a wandering space that encourages users to explore beyond their personal algorithms and expand their visual research horizons. Rather than searching multiple databases, the platform offers users open-source content from text- and image-based archives — an alternative method that nurtures curiosity, fosters authentic engagement, and broadens visual literacy for researchers.</p>
+                <hr>
+                <h3>About This Project</h3>
+                <p>This visual exploration tool creates dynamic compositions using lesser-known archival materials from institutional collections, encouraging serendipitous discovery and expanding visual research beyond algorithmic limitations.</p>
+                <hr>
+                <h3>Credits</h3>
+                <p><strong>Marc Choi</strong><br>Assistant Professor of Graphic Design</p>
+                <p><strong>Nidhi Singh Rathore</strong><br>Assistant Professor of Design</p>
+                <p><strong>Corcoran School of the Arts and Design</strong><br>The George Washington University</p>
+            `;
+            openSidebar();
+        }
+
+        // Show main title after landing page fades
+        function showMainTitle() {
+            const mainTitle = document.getElementById('mainTitle');
+            if (mainTitle) {
+                mainTitle.classList.add('visible');
+            }
+        }
+
+        // Sidebar functions
+        function openSidebar() {
+            document.getElementById('sidebar').classList.add('open');
+            document.getElementById('sidebarOverlay').classList.add('active');
+        }
+
+        function closeSidebar() {
+            // Remove highlights when sidebar closes
+            document.querySelectorAll('.collage-item').forEach(el => {
+                el.classList.remove('highlighted');
+            });
+            
+            document.getElementById('sidebar').classList.remove('open');
+            document.getElementById('sidebarOverlay').classList.remove('active');
+        }
+
+        // Initialize on page load with landing page sequence
+        window.onload = function() {
+            // Set CSS custom property for real viewport height
+            function setVH() {
+                const vh = window.innerHeight * 0.01;
+                document.documentElement.style.setProperty('--vh', `${vh}px`);
+            }
+            
+            // Set initial viewport height
+            setVH();
+            
+            // Update on resize and orientation change
+            window.addEventListener('resize', setVH);
+            window.addEventListener('orientationchange', () => {
+                setTimeout(setVH, 100); // Small delay for orientation change
+            });
+
+            // Hide landing page after 3 seconds
+            setTimeout(() => {
+                document.getElementById('landingPage').classList.add('hidden');
+                showMainTitle();
+                // Start generating collage after landing page starts fading
+                setTimeout(() => {
+                    generateNewCollage();
+                }, 500);
+            }, 3000);
+        };
+
+        // Regenerate on window resize - throttled for mobile
+        let resizeTimeout;
+        window.onresize = function() {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(() => {
+                if (currentCollage.length > 0 && !isLoading) {
+                    generateNewCollage();
+                }
+            }, 250);
+        };
+
+        // Prevent zoom on double tap for iOS
+        let lastTouchEnd = 0;
+        document.addEventListener('touchend', function(event) {
+            const now = Date.now();
+            if (now - lastTouchEnd <= 300) {
+                event.preventDefault();
+            }
+            lastTouchEnd = now;
+        }, false);
+
+        // Prevent context menu on long press
+        window.addEventListener('contextmenu', function(e) {
+            e.preventDefault();
+        });
+
+        // ===================================================
+        // ADDED: Resize & crop
+        // ===================================================
+
+        const ICON_RESIZE = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 6.5v-4h4M13.5 9.5v4h-4M2.5 2.5l11 11"/></svg>';
+        const ICON_CROP = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 1.5V12h10.5M1.5 4H12v10.5"/></svg>';
+
+        const MIN_ITEM_SIZE = 60;  // smallest an image can be resized to (px)
+        const MIN_CROP = 0.08;     // smallest crop, as a fraction of the image
+
+        const cropData = new WeakMap(); // element -> {x, y, w, h} as fractions of the full image
+        let cropState = null;           // the image currently being cropped
+
+        // Add the resize handle and crop button to a collage item
+        function enhanceCollageItem(element, img) {
+            const markReady = () => {
+                if (img.naturalWidth) element.classList.add('img-ready');
+            };
+            if (img.complete) markReady();
+            img.addEventListener('load', markReady);
+
+            const resizeBtn = makeControl('resize-control', ICON_RESIZE, 'Resize image');
+            const cropBtn = makeControl('crop-control', ICON_CROP, 'Crop image');
+            element.appendChild(resizeBtn);
+            element.appendChild(cropBtn);
+
+            resizeBtn.addEventListener('mousedown', e => startResize(e, element));
+            resizeBtn.addEventListener('touchstart', e => startResize(e, element), {passive: false});
+
+            cropBtn.addEventListener('click', () => enterCrop(element, img));
+            cropBtn.addEventListener('touchend', () => enterCrop(element, img));
+
+            // The last image touched or clicked keeps its controls visible
+            element.addEventListener('mousedown', () => selectItem(element));
+            element.addEventListener('touchstart', () => selectItem(element), {passive: true});
+        }
+
+        function makeControl(className, icon, label) {
+            const control = document.createElement('div');
+            control.className = 'item-control ' + className;
+            control.setAttribute('role', 'button');
+            control.setAttribute('aria-label', label);
+            control.title = label;
+            control.innerHTML = icon;
+            keepFromItem(control);
+            return control;
+        }
+
+        // Stop presses on our controls from also dragging the image or opening the sidebar
+        function keepFromItem(el) {
+            ['mousedown', 'touchmove', 'touchend', 'click'].forEach(type => {
+                el.addEventListener(type, e => e.stopPropagation());
+            });
+            el.addEventListener('touchstart', e => {
+                e.stopPropagation();
+                e.preventDefault();
+            }, {passive: false});
+        }
+
+        // Follow a mouse or finger from a press until release
+        function trackPress(startEvent, onMove, onEnd) {
+            const isTouch = startEvent.type === 'touchstart';
+            const point = ev => isTouch ? (ev.touches[0] || ev.changedTouches[0]) : ev;
+            const p0 = point(startEvent);
+            const x0 = p0.clientX;
+            const y0 = p0.clientY;
+            // Touch events always go to the element first touched
+            const target = isTouch ? startEvent.target : document;
+            const moveType = isTouch ? 'touchmove' : 'mousemove';
+            const endType = isTouch ? 'touchend' : 'mouseup';
+
+            const move = ev => {
+                ev.preventDefault();
+                const p = point(ev);
+                onMove(p.clientX - x0, p.clientY - y0);
+            };
+            const end = () => {
+                target.removeEventListener(moveType, move);
+                target.removeEventListener(endType, end);
+                target.removeEventListener('touchcancel', end);
+                if (onEnd) onEnd();
+            };
+
+            target.addEventListener(moveType, move, {passive: false});
+            target.addEventListener(endType, end);
+            if (isTouch) target.addEventListener('touchcancel', end);
+        }
+
+        function selectItem(element) {
+            document.querySelectorAll('.collage-item.selected').forEach(el => {
+                if (el !== element) el.classList.remove('selected');
+            });
+            element.classList.add('selected');
+        }
+
+        // Tapping the empty background hides the controls
+        function deselectOnBackground(e) {
+            if (e.target.id === 'collageContainer' || e.target === document.body) {
+                document.querySelectorAll('.collage-item.selected').forEach(el => {
+                    el.classList.remove('selected');
+                });
+            }
+        }
+        document.addEventListener('mousedown', deselectOnBackground);
+        document.addEventListener('touchstart', deselectOnBackground, {passive: true});
+
+        // ---------- Resize ----------
+
+        function startResize(e, element) {
+            e.preventDefault();
+            isDragging = true; // keeps the existing click handler from opening the sidebar
+            selectItem(element);
+
+            const startW = element.offsetWidth;
+            const startH = element.offsetHeight;
+            const minScale = MIN_ITEM_SIZE / Math.min(startW, startH);
+            const maxScale = Math.max(1, Math.min(window.innerWidth / startW, window.innerHeight / startH));
+
+            element.classList.add('resizing');
+
+            // Keeps proportions: the scale follows the average of both directions
+            trackPress(e, (dx, dy) => {
+                const scale = ((startW + dx) / startW + (startH + dy) / startH) / 2;
+                const k = Math.max(minScale, Math.min(scale, maxScale));
+                element.style.width = (startW * k) + 'px';
+                element.style.height = (startH * k) + 'px';
+            }, () => {
+                element.classList.remove('resizing');
+                setTimeout(() => { isDragging = false; }, 100);
+            });
+        }
+
+        // ---------- Crop ----------
+
+        function setBox(element, left, top, width, height) {
+            element.style.left = left + 'px';
+            element.style.top = top + 'px';
+            element.style.width = width + 'px';
+            element.style.height = height + 'px';
+        }
+
+        // Show only the crop area: enlarge the image and clip it to the crop
+        function applyCropStyles(img, r) {
+            img.style.width = (100 / r.w) + '%';
+            img.style.height = (100 / r.h) + '%';
+            img.style.left = (-r.x / r.w * 100) + '%';
+            img.style.top = (-r.y / r.h * 100) + '%';
+            const inset = `inset(${r.y * 100}% ${(1 - r.x - r.w) * 100}% ${(1 - r.y - r.h) * 100}% ${r.x * 100}%)`;
+            img.style.clipPath = inset;
+            img.style.webkitClipPath = inset;
+        }
+
+        function enterCrop(element, img) {
+            if (cropState) {
+                if (cropState.element === element) return;
+                applyCrop();
+            }
+            const nw = img.naturalWidth;
+            const nh = img.naturalHeight;
+            if (!nw || !nh) return;
+
+            const W = element.offsetWidth;
+            const H = element.offsetHeight;
+            const left = element.offsetLeft;
+            const top = element.offsetTop;
+            const existing = cropData.get(element);
+
+            // Remember the current state so "cancel" can restore it
+            const prev = {
+                left: element.style.left,
+                top: element.style.top,
+                width: element.style.width,
+                height: element.style.height,
+                imgCss: img.style.cssText,
+                crop: existing ? Object.assign({}, existing) : null
+            };
+
+            // While cropping, the box shows the whole image at its current scale
+            let full, rect;
+            if (existing) {
+                const s = W / (existing.w * nw);
+                const fw = nw * s;
+                const fh = nh * s;
+                full = { left: left - existing.x * fw, top: top - existing.y * fh, w: fw, h: fh };
+                rect = Object.assign({}, existing);
+            } else {
+                const s = Math.min(W / nw, H / nh);
+                const fw = nw * s;
+                const fh = nh * s;
+                full = { left: left + (W - fw) / 2, top: top + (H - fh) / 2, w: fw, h: fh };
+                rect = { x: 0, y: 0, w: 1, h: 1 };
+            }
+
+            element.classList.remove('cropped');
+            img.style.cssText = '';
+            element.classList.add('crop-mode', 'selected');
+            setBox(element, full.left, full.top, full.w, full.h);
+
+            const layer = buildCropLayer();
+            element.appendChild(layer);
+
+            cropState = { element, img, rect, prev, full, layer, box: layer.firstChild };
+            renderCropBox();
+            document.getElementById('cropToolbar').classList.add('active');
+        }
+
+        function buildCropLayer() {
+            const layer = document.createElement('div');
+            layer.className = 'crop-layer';
+
+            const box = document.createElement('div');
+            box.className = 'crop-box';
+            box.dataset.dir = 'move';
+
+            // Edges first, corners last so corners win where they overlap
+            ['n', 's', 'e', 'w', 'nw', 'ne', 'sw', 'se'].forEach(dir => {
+                const handle = document.createElement('div');
+                handle.className = 'crop-handle ' + dir;
+                handle.dataset.dir = dir;
+                box.appendChild(handle);
+            });
+
+            layer.appendChild(box);
+            keepFromItem(layer);
+            layer.addEventListener('mousedown', startCropDrag);
+            layer.addEventListener('touchstart', startCropDrag, {passive: false});
+            return layer;
+        }
+
+        function renderCropBox() {
+            const r = cropState.rect;
+            const box = cropState.box;
+            box.style.left = (r.x * 100) + '%';
+            box.style.top = (r.y * 100) + '%';
+            box.style.width = (r.w * 100) + '%';
+            box.style.height = (r.h * 100) + '%';
+        }
+
+        function clamp(v, min, max) {
+            return Math.max(min, Math.min(v, max));
+        }
+
+        // Drag a crop edge or corner, or move the whole crop area
+        function startCropDrag(e) {
+            const dir = e.target.dataset && e.target.dataset.dir;
+            if (!dir || !cropState) return;
+            e.preventDefault();
+
+            const start = Object.assign({}, cropState.rect);
+            const W = cropState.full.w;
+            const H = cropState.full.h;
+
+            trackPress(e, (dx, dy) => {
+                const fx = dx / W;
+                const fy = dy / H;
+                let { x, y, w, h } = start;
+
+                if (dir === 'move') {
+                    x = clamp(start.x + fx, 0, 1 - w);
+                    y = clamp(start.y + fy, 0, 1 - h);
+                } else {
+                    if (dir.includes('w')) {
+                        x = clamp(start.x + fx, 0, start.x + start.w - MIN_CROP);
+                        w = start.w + (start.x - x);
+                    }
+                    if (dir.includes('e')) {
+                        w = clamp(start.w + fx, MIN_CROP, 1 - start.x);
+                    }
+                    if (dir.includes('n')) {
+                        y = clamp(start.y + fy, 0, start.y + start.h - MIN_CROP);
+                        h = start.h + (start.y - y);
+                    }
+                    if (dir.includes('s')) {
+                        h = clamp(start.h + fy, MIN_CROP, 1 - start.y);
+                    }
+                }
+
+                cropState.rect = { x, y, w, h };
+                renderCropBox();
+            });
+        }
+
+        function closeCropMode() {
+            if (!cropState) return;
+            cropState.layer.remove();
+            cropState.element.classList.remove('crop-mode');
+            document.getElementById('cropToolbar').classList.remove('active');
+            cropState = null;
+        }
+
+        function applyCrop() {
+            if (!cropState) return;
+            const { element, img, rect: r, full } = cropState;
+            closeCropMode();
+
+            // The image box becomes exactly the cropped area, in the same spot on screen
+            cropData.set(element, r);
+            element.classList.add('cropped');
+            setBox(element, full.left + r.x * full.w, full.top + r.y * full.h, r.w * full.w, r.h * full.h);
+            applyCropStyles(img, r);
+        }
+
+        function cancelCrop() {
+            if (!cropState) return;
+            const { element, img, prev } = cropState;
+            closeCropMode();
+
+            element.style.left = prev.left;
+            element.style.top = prev.top;
+            element.style.width = prev.width;
+            element.style.height = prev.height;
+            img.style.cssText = prev.imgCss;
+            if (prev.crop) {
+                cropData.set(element, prev.crop);
+                element.classList.add('cropped');
+            } else {
+                cropData.delete(element);
+                element.classList.remove('cropped');
+            }
+        }
+
+        // Keyboard shortcuts while cropping
+        document.addEventListener('keydown', function(e) {
+            if (!cropState) return;
+            if (e.key === 'Escape') cancelCrop();
+            if (e.key === 'Enter') applyCrop();
+        });
+
+        // A new collage (or a window resize, which makes one) ends any crop in progress
+        document.getElementById('exploreBtn').addEventListener('click', cancelCrop, true);
+        window.addEventListener('resize', cancelCrop);
+    </script>
+</body>
+</html>
